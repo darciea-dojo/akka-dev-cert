@@ -15,6 +15,9 @@ public class ParticipantSlotEntity
 
 
 
+
+
+
     public Effect<Done> unmarkAvailable(ParticipantSlotEntity.Commands.UnmarkAvailable unmark) {
         // Supply your own implementation
         var event = new Event.UnmarkedAvailable(unmark.slotId, unmark.participantId, unmark.participantType);
