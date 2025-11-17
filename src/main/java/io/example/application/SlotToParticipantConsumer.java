@@ -1,6 +1,7 @@
 package io.example.application;
 
 import akka.javasdk.annotations.Component;
+import akka.Done;
 import akka.javasdk.annotations.Consume;
 import akka.javasdk.client.ComponentClient;
 import akka.javasdk.consumer.Consumer;
@@ -24,6 +25,55 @@ public class SlotToParticipantConsumer extends Consumer {
 
     public Effect onEvent(BookingEvent event) {
         // Supply your own implementation
+        String entityId = participantSlotId(event);
+
+        switch (event) {
+            case BookingEvent.ParticipantMarkedAvailable evt -> {
+                    var cmd = new ParticipantSlotEntity.Commands.MarkAvailable(
+                            evt.slotId(),
+                            evt.participantId(),
+                            evt.participantType());
+                    client
+                            .forEventSourcedEntity(entityId)
+                            .method(ParticipantSlotEntity::markAvailable)
+                            .invoke(cmd);
+            }
+
+            case BookingEvent.ParticipantUnmarkedAvailable evt -> {
+                var cmd = new ParticipantSlotEntity.Commands.UnmarkAvailable(
+                        evt.slotId(),
+                        evt.participantId(),
+                        evt.participantType());
+                client
+                        .forEventSourcedEntity(entityId)
+                        .method(ParticipantSlotEntity::unmarkAvailable)
+                        .invoke(cmd);
+            }
+
+            case BookingEvent.ParticipantBooked evt -> {
+                var cmd = new ParticipantSlotEntity.Commands.Book(
+                        evt.slotId(),
+                        evt.participantId(),
+                        evt.participantType(),
+                        evt.bookingId());
+                client
+                        .forEventSourcedEntity(entityId)
+                        .method(ParticipantSlotEntity::book)
+                        .invoke(cmd);
+            }
+
+            case BookingEvent.ParticipantCanceled evt -> {
+                var cmd = new ParticipantSlotEntity.Commands.Cancel(
+                        evt.slotId(),
+                        evt.participantId(),
+                        evt.participantType(),
+                        evt.bookingId());
+                client
+                        .forEventSourcedEntity(entityId)
+                        .method(ParticipantSlotEntity::cancel)
+                        .invoke(cmd);
+            }
+        }
         return effects().done();
     }
 

@@ -52,9 +52,14 @@ public record Timeslot(Set<Booking> bookings, Set<Participant> available) {
   // Removes all three participants of a booking from the booking list. It does
   // not automatically mark them as available for that slot.
   public Timeslot cancelBooking(String bookingId) {
-    Set<Booking> books =
-        bookings.stream().filter(b -> !b.bookingId().equals(bookingId)).collect(Collectors.toSet());
-    return new Timeslot(books, available);
+    Set<Booking> books = bookings;
+        Set<Participant> nowAvailable = available;
+        var cancelledBooking = findBooking(bookingId);
+        cancelledBooking.forEach(booking -> {
+            nowAvailable.add(booking.participant());
+            books.remove(booking);
+        });
+    return new Timeslot(books, nowAvailable);
   }
 
   public record Booking(Participant participant, String bookingId) {}

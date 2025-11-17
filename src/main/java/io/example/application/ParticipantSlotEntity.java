@@ -4,35 +4,52 @@ import akka.Done;
 import akka.javasdk.annotations.Component;
 import akka.javasdk.annotations.TypeName;
 import akka.javasdk.eventsourcedentity.EventSourcedEntity;
+import akka.javasdk.eventsourcedentity.EventSourcedEntityContext;
+import io.example.domain.BookingEvent;
 import io.example.domain.Participant.ParticipantType;
 
 @Component(id = "participant-slot")
 public class ParticipantSlotEntity
                 extends EventSourcedEntity<ParticipantSlotEntity.State, ParticipantSlotEntity.Event> {
 
-        public Effect<Done> unmarkAvailable(ParticipantSlotEntity.Commands.UnmarkAvailable unmark) {
-                // Supply your own implementation
-                return effects().reply(Done.done());
-        }
 
-        public Effect<Done> markAvailable(ParticipantSlotEntity.Commands.MarkAvailable mark) {
-                // Supply your own implementation
-                return effects().reply(Done.done());
-        }
 
-        public Effect<Done> book(ParticipantSlotEntity.Commands.Book book) {
-                // Supply your own implementation
-                return effects().reply(Done.done());
-        }
 
-        public Effect<Done> cancel(ParticipantSlotEntity.Commands.Cancel cancel) {
-                // Supply your own implementation
-                return effects().reply(Done.done());
-        }
+    public Effect<Done> unmarkAvailable(ParticipantSlotEntity.Commands.UnmarkAvailable unmark) {
+        // Supply your own implementation
+        var event = new Event.UnmarkedAvailable(unmark.slotId, unmark.participantId, unmark.participantType);
+        return effects()
+                .persist(event)
+                .thenReply(__ -> Done.getInstance());
+    }
 
-        record State(
-                        String slotId, String participantId, ParticipantType participantType, String status) {
-        }
+    public Effect<Done> markAvailable(ParticipantSlotEntity.Commands.MarkAvailable mark) {
+        // Supply your own implementation
+        var event = new Event.MarkedAvailable(mark.slotId, mark.participantId, mark.participantType);
+        return effects()
+                .persist(event)
+                .thenReply(__ -> Done.getInstance());
+    }
+
+    public Effect<Done> book(ParticipantSlotEntity.Commands.Book book) {
+        // Supply your own implementation
+        var event = new Event.Booked(book.slotId, book.participantId, book.participantType, book.bookingId);
+        return effects()
+                .persist(event)
+                .thenReply(__ -> Done.getInstance());
+    }
+
+    public Effect<Done> cancel(ParticipantSlotEntity.Commands.Cancel cancel) {
+        // Supply your own implementation
+        var event = new Event.Canceled(cancel.slotId, cancel.participantId, cancel.participantType, cancel.bookingId);
+        return effects()
+                .persist(event)
+                .thenReply(__ -> Done.getInstance());
+    }
+
+    public record State(
+            String slotId, String participantId, ParticipantType participantType, String status) {
+    }
 
         public sealed interface Commands {
                 record MarkAvailable(String slotId, String participantId, ParticipantType participantType)
@@ -78,9 +95,19 @@ public class ParticipantSlotEntity
                 }
         }
 
-        @Override
-        public ParticipantSlotEntity.State applyEvent(ParticipantSlotEntity.Event event) {
-                // Supply your own implementation
-                return null;
-        }
+    @Override
+    public ParticipantSlotEntity.State applyEvent(ParticipantSlotEntity.Event event) {
+        // Supply your own implementation
+        return switch (event) {
+            case Event.MarkedAvailable evt ->
+                new ParticipantSlotEntity.State(
+                        evt.slotId, evt.participantId, evt.participantType, "available");
+            case Event.UnmarkedAvailable evt ->
+                new ParticipantSlotEntity.State(evt.slotId, evt.participantId, evt.participantType, "unavailable");
+            case Event.Booked evt -> new ParticipantSlotEntity.State(
+                    evt.slotId, evt.participantId, evt.participantType, "booked");
+            case Event.Canceled evt -> new ParticipantSlotEntity.State(
+                    evt.slotId, evt.participantId, evt.participantType, "available");
+        };
+    }
 }
