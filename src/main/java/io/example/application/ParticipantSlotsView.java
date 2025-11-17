@@ -9,6 +9,8 @@ import io.example.application.ParticipantSlotEntity.Event.Booked;
 import io.example.application.ParticipantSlotEntity.Event.Canceled;
 import io.example.application.ParticipantSlotEntity.Event.MarkedAvailable;
 import io.example.application.ParticipantSlotEntity.Event.UnmarkedAvailable;
+
+import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +25,28 @@ public class ParticipantSlotsView extends View {
 
         public Effect<SlotRow> onEvent(ParticipantSlotEntity.Event event) {
             // Supply your own implementation
-            return effects().ignore();
+            return switch (event) {
+                case MarkedAvailable e -> {
+                    var newRow = new SlotRow(
+                            e.slotId(), e.participantId(), e.participantType().toString(), "not booked", "available", Instant.now());
+                    yield effects().updateRow(newRow);
+                }
+                case UnmarkedAvailable e -> {
+                    var newRow = new SlotRow(
+                            e.slotId(), e.participantId(), e.participantType().toString(), "not booked", "unavailable", Instant.now());
+                    yield effects().updateRow(newRow);
+                }
+                case Booked e -> {
+                    var newRow = new SlotRow(
+                            e.slotId(), e.participantId(), e.participantType().toString(), e.bookingId(), "booked", Instant.now());
+                    yield effects().updateRow(newRow);
+                }
+                case Canceled e -> {
+                    var newRow = new SlotRow(
+                            e.slotId(), e.participantId(), e.participantType().toString(), e.bookingId() + " canceled", "available", Instant.now());
+                    yield effects().updateRow(newRow);
+                }
+            };
         }
     }
 
@@ -32,7 +55,8 @@ public class ParticipantSlotsView extends View {
             String participantId,
             String participantType,
             String bookingId,
-            String status) {
+            String status,
+            Instant lastUpdated) {
     }
 
     public record ParticipantStatusInput(String participantId, String status) {
@@ -41,12 +65,12 @@ public class ParticipantSlotsView extends View {
     public record SlotList(List<SlotRow> slots) {
     }
 
-    // @Query("SELECT .... ")
+     @Query("SELECT * AS slots FROM view_participant_slots WHERE participantId = :participantId")
     public QueryEffect<SlotList> getSlotsByParticipant(String participantId) {
         return queryResult();
     }
 
-    // @Query("SELECT ...")
+     @Query("SELECT * AS slots FROM view_participant_slots WHERE participantId = :participantId AND status = :status ORDER BY lastUpdated DESC")
     public QueryEffect<SlotList> getSlotsByParticipantAndStatus(ParticipantStatusInput input) {
         return queryResult();
     }
